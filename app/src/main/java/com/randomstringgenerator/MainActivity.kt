@@ -24,8 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,8 +57,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun mainScreen(viewModel: RandomStringViewModel) {
-    val stringList by viewModel.stringList.observeAsState(emptyList())
-    val errorMsg by viewModel.errorMsg.observeAsState(null)
+    val stringList by viewModel.stringList.collectAsState(emptyList())
+    val errorMsg by viewModel.errorMsg.collectAsState(null)
+    val isRequestEnabled by viewModel.isEnabled.collectAsState()
+
     var maxLength by remember { mutableStateOf(10) }
     Column(
         modifier = Modifier
@@ -76,7 +78,7 @@ fun mainScreen(viewModel: RandomStringViewModel) {
                 modifier = Modifier.width(80.dp)
             )
             Spacer(Modifier.width(8.dp))
-            Button(onClick = { viewModel.generateString(maxLength) }) {
+            Button(onClick = { viewModel.generateString(maxLength) }, enabled = isRequestEnabled) {
                 Text("Generate Random String")
             }
         }
