@@ -1,42 +1,55 @@
 package com.randomstringgenerator.viewmodel
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.randomstringgenerator.data.RandomStringMetadata
 import com.randomstringgenerator.data.RandomStringRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class RandomStringViewModel(private val repository: RandomStringRepository) : ViewModel() {
 
-    private val _stringList = MutableLiveData<List<RandomStringMetadata>>(emptyList())
-    val stringList: LiveData<List<RandomStringMetadata>> = _stringList
-    private val _errorMsg = MutableLiveData<String?>(null)
-    val errorMsg: LiveData<String?> = _errorMsg
+    private val _stringList = MutableStateFlow<List<RandomStringMetadata>>(emptyList())
+    val stringList: StateFlow<List<RandomStringMetadata>> = _stringList
+    private val _errorMsg = MutableStateFlow<String?>(null)
+    val errorMsg: StateFlow<String?> = _errorMsg
+    private val _isEnabled = MutableStateFlow(true)
+    val isEnabled: StateFlow<Boolean> = _isEnabled
 
     fun generateString(maxLength: Int) {
         viewModelScope.launch {
+            _isEnabled.emit(false)
             val result = repository.fetchRandomString(maxLength)
             result?.let {
-                val updated = stringList.value.orEmpty() + it
-                _stringList.postValue(updated)
-                _errorMsg.postValue(null)
-            } ?: _errorMsg.postValue("Failed to query provider")
+                val updated = stringList.value + it
+                _stringList.emit(updated)
+                _errorMsg.emit(null)
+                _isEnabled.emit(true)
+            } ?: handleError()
         }
+    }
+
+    private suspend fun handleError() {
+        _errorMsg.emit("Failed to query provider")
+        _isEnabled.emit(true)
     }
 
     fun deleteAll() {
-        _stringList.postValue(emptyList())
+        viewModelScope.launch {
+            _stringList.emit(emptyList())
+        }
     }
 
     fun deleteAt(index: Int) {
-        val updated = stringList.value.orEmpty().toMutableList()
-        if (index in updated.indices) {
-            updated.removeAt(index)
+        viewModelScope.launch {
+            val updated = stringList.value.orEmpty().toMutableList()
+            if (index in updated.indices) {
+                updated.removeAt(index)
+            }
+            _stringList.emit(updated)
         }
-        _stringList.postValue(updated)
     }
 }
 
